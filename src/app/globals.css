@@ -1,0 +1,601 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  position: relative !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important;
+
+  /* 保持变量色，叠加 CG 背景 */
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+
+  /* 背景交由 React 的 cg-layer 渲染，避免刷新时先出现默认首图再切到上次图 */
+  /* 此处不再设置 body 的背景图，防止错误的首屏回退 */
+}
+
+/* 全局隐藏原生滚动条，并稳定滚动槽以避免布局抖动 */
+html {
+  scrollbar-width: none !important; /* Firefox */
+  scrollbar-gutter: stable both-edges !important; /* 预留稳定滚动槽，避免因显隐造成布局变化 */
+  -ms-overflow-style: none !important; /* 旧版 IE/Edge */
+}
+/* WebKit 浏览器隐藏滚动条 */
+html::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+/* 保留滚动能力与滚动行为控制 */
+html, body {
+  overscroll-behavior: contain !important;
+}
+
+/* 顶层柔白叠层，提升可读性（黑白极简） */
+body::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+
+  /* 纯黑白体系的柔白渐变，保证文本对比 */
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.88),
+    rgba(255, 255, 255, 0.5)
+  ) !important;
+}
+
+/* 玻璃卡片，遵循规范的轻量玻璃态，用于主内容容器 */
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(6px) saturate(130%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.10) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 微动效：进入淡入上移 */
+.fade-in-up {
+  animation: fadeInUp 600ms ease-out both !important;
+}
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* 微动效：淡入 */
+.fade-in {
+  animation: fadeIn 400ms ease-out both !important;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 慢速淡入（用于初始阶段 UI 元素统一出现） */
+.fade-in-slow {
+  /* UI 慢慢显现（同步放缓） */
+  animation: fadeInSlow 1600ms ease-out both !important;
+}
+@keyframes fadeInSlow {
+  0%   { opacity: 0; filter: blur(6px); transform: translateY(4px); }
+  100% { opacity: 1; filter: blur(0);   transform: translateY(0); }
+}
+
+/* 初始阶段：在背景完全就绪前隐藏所有标记为 ui-visible 的前景 UI */
+body.initial-hidden .ui-visible {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 首屏黑屏覆盖：从全黑开始，固定显示 0.5s（由页面逻辑移除该类） */
+body.initial-black::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  background: #000 !important;
+  z-index: 100 !important;
+  pointer-events: none !important;
+}
+/* 初始阶段隐藏顶层柔白叠层与角落阴影（与 UI 同步） */
+body.initial-hidden::before {
+  opacity: 0 !important;
+}
+body.initial-hidden .corner-fades {
+  opacity: 0 !important;
+}
+
+/* 背景就绪后：统一为所有 ui-visible 元素应用慢速淡入 */
+body.initial-ready .ui-visible {
+  animation: fadeInSlow 1600ms ease-out both !important;
+}
+/* 背景就绪后：顶层柔白叠层与角落阴影慢慢显现 */
+body.initial-ready::before {
+  animation: fadeInSlow 1600ms ease-out both !important;
+}
+body.initial-ready .corner-fades {
+  animation: fadeInSlow 1600ms ease-out both !important;
+}
+
+/* 微动效：细微漂浮（用于标题图等） */
+.float-subtle {
+  animation: floatSubtle 8s ease-in-out infinite !important;
+}
+@keyframes floatSubtle {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(0); }
+}
+
+/* CG 背景层与切换动效（高级但极简的黑白风） */
+.cg-layer {
+  position: absolute !important;
+  inset: 0 !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  will-change: opacity, transform !important;
+}
+
+.cg-fade-in {
+  /* 初始场景背景入场：焦点拉移 + 从全黑渐显（统一为 4000ms） */
+  animation: cgFocusZoomIn 4000ms ease-out both !important;
+}
+.cg-fade-out {
+  animation: cgFadeOut 1200ms ease-out both !important;
+}
+
+/* 焦点拉移 + 缩放入场（由轻微模糊逐步清晰，同时缩放回到 1.0） */
+@keyframes cgFocusZoomIn {
+  /* 0ms: 开始（拉伸最大，模糊最强） */
+  0%   { opacity: 0; transform: scale(1.08); filter: blur(8px); }
+  /* 3000ms/4000ms ≈ 75%：镜头拉伸已完成到 1.0（其余 1000ms 继续完成去模糊与淡入） */
+  75%  { transform: scale(1.0); }
+  /* 4000ms：结束（清晰 + 正常比例） */
+  100% { opacity: 1; transform: scale(1.0);  filter: blur(0px); }
+}
+@keyframes cgFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes cgZoom {
+  from { transform: scale(1.02); }
+  to   { transform: scale(1); }
+}
+
+/* 左右导航按钮（玻璃态 + 触控友好 + 微交互） */
+.cg-nav-btn {
+  height: 56px !important;
+  width: 56px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(0, 0, 0, 0.35) !important;
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(8px) saturate(140%) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12) !important;
+  color: #000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease !important;
+}
+.cg-nav-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16) !important;
+  border-color: rgba(0, 0, 0, 0.5) !important;
+}
+.cg-nav-btn:active {
+  transform: scale(0.98) !important;
+}
+
+/* 底部页码指示器（玻璃态胶囊） */
+.cg-indicator {
+  height: 40px !important;
+  min-width: 72px !important;
+  padding: 0 16px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(0, 0, 0, 0.35) !important;
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(8px) saturate(140%) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12) !important;
+  color: #000 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  letter-spacing: 0.02em !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease !important;
+}
+.cg-indicator:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16) !important;
+  border-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 禁止选择与点击高亮，避免边缘闪烁的“编辑符号” */
+.no-select,
+.nav-arrow-btn,
+.nav-arrow-img,
+.cg-nav-btn,
+.title-img {
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+  caret-color: transparent !important;
+}
+
+/* 标题图为装饰元素，禁用交互以避免点击边缘产生高亮/闪烁 */
+.title-img {
+  pointer-events: none !important;
+}
+
+/* 移除按钮焦点描边（仍保留键盘可达性，通过容器实现） */
+.nav-arrow-btn:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 图片不显示焦点样式 */
+.nav-arrow-img {
+  outline: none !important;
+}
+
+/* 边缘悬停区域：在左右边缘形成 hover 感应区，渐显箭头并叠加柔白渐层提升可读性 */
+.nav-zone {
+  position: fixed !important;
+  inset: auto !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 160px !important; /* 感应区宽度，可按需调整 */
+  pointer-events: auto !important;
+}
+.nav-zone-left {
+  left: 0 !important;
+  justify-content: flex-start !important;
+}
+.nav-zone-right {
+  right: 0 !important;
+  justify-content: flex-end !important;
+}
+
+/* 默认隐藏箭头并轻微离边偏移，hover 时渐显与回位 */
+.nav-zone .nav-arrow-btn {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition:
+    opacity 260ms ease,
+    transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 260ms ease !important;
+}
+.nav-zone-left .nav-arrow-btn {
+  transform: translateX(-12px) scale(0.98) translateZ(0) !important;
+}
+.nav-zone-right .nav-arrow-btn {
+  transform: translateX(12px) scale(0.98) translateZ(0) !important;
+}
+.nav-zone:hover .nav-arrow-btn {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateX(0) scale(1) translateZ(0) !important;
+  filter: drop-shadow(0 14px 36px rgba(0, 0, 0, 0.22)) !important;
+}
+
+/* 悬停时叠加边缘柔白渐层，帮助背景区域的箭头对比度 */
+.nav-zone-left::before,
+.nav-zone-right::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 120px !important;
+  opacity: 0 !important;
+  transition: opacity 220ms ease !important;
+  pointer-events: none !important;
+}
+.nav-zone-left::before {
+  left: 0 !important;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.30), transparent) !important;
+}
+.nav-zone-right::before {
+  right: 0 !important;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.30), transparent) !important;
+}
+.nav-zone:hover::before {
+  opacity: 1 !important;
+}
+
+/* 触控设备上无 hover，保持箭头可用与可见 */
+@media (hover: none) {
+  .nav-zone .nav-arrow-btn {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateX(0) scale(1) translateZ(0) !important;
+  }
+  .nav-zone::before {
+    opacity: 0 !important;
+  }
+}
+
+/* 箭头图片按钮（126x191，透明背景；右箭头为原图，左箭头镜像） */
+.nav-arrow-btn {
+  height: 191px !important;
+  width: 126px !important;
+  border: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.nav-arrow-img {
+  width: 126px !important;
+  height: 191px !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  image-rendering: auto !important;
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.18)) !important;
+  transition: transform 160ms ease, filter 160ms ease, opacity 160ms ease !important;
+}
+.nav-arrow-right {
+  transform: translateZ(0) !important;
+}
+.nav-arrow-left {
+  transform: scaleX(-1) translateZ(0) !important;
+}
+.nav-arrow-btn:hover .nav-arrow-right {
+  transform: translateY(-1px) !important;
+  filter: drop-shadow(0 14px 36px rgba(0, 0, 0, 0.22)) !important;
+}
+.nav-arrow-btn:hover .nav-arrow-left {
+  transform: scaleX(-1) translateY(-1px) !important;
+  filter: drop-shadow(0 14px 36px rgba(0, 0, 0, 0.22)) !important;
+}
+.nav-arrow-btn:active .nav-arrow-right {
+  transform: translateY(2px) scale(0.92) !important;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.24)) brightness(0.9) !important;
+}
+.nav-arrow-btn:active .nav-arrow-left {
+  transform: scaleX(-1) translateY(2px) scale(0.92) !important;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.24)) brightness(0.9) !important;
+}
+
+/* 背景加载动画覆盖层（玻璃态 + 极简黑白风） */
+.cg-loading-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 5 !important; /* 位于 cg-layer 之上 */
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.55)) !important;
+  backdrop-filter: blur(6px) saturate(130%) !important;
+  animation: loadingFade 240ms ease-out both !important;
+}
+
+/* 加载器容器 */
+.loader-wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+/* 环形加载器（黑白风） */
+.loader-ring {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 9999px !important;
+  border: 3px solid rgba(0, 0, 0, 0.25) !important;
+  border-top-color: #000 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) inset !important;
+  animation: spin 900ms linear infinite !important;
+}
+
+/* 加载文案 */
+.loader-caption {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #000 !important;
+  letter-spacing: 0.02em !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+/* 动效 */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes loadingFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 主人公选择下拉框（玻璃态 + 极简黑白风 + 微交互） */
+.protagonist-select {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important; /* 12px ≈ 8pt 系统中的中间档 */
+}
+
+.select-wrap {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 320px !important; /* 响应式约束 */
+  height: 48px !important;     /* 触达区≥48px */
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(6px) saturate(130%) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease !important;
+}
+
+.select-wrap:hover {
+  border-color: rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+.select-wrap:focus-within {
+  border-color: #000 !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16) !important;
+}
+
+.select-ui {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  outline: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  color: #000 !important;
+  font-size: 16px !important;
+  line-height: 24px !important; /* 与规范一致的排版节奏 */
+  padding-right: 28px !important; /* 为伪箭头留出空间 */
+}
+
+/* 纯 CSS 下拉箭头（不使用图片），黑白极简 */
+.select-wrap::after {
+  content: "" !important;
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-30%) !important;
+  width: 0 !important;
+  height: 0 !important;
+  border-left: 6px solid transparent !important;
+  border-right: 6px solid transparent !important;
+  border-top: 8px solid rgba(0, 0, 0, 0.6) !important;
+  transition: border-top-color 160ms ease, transform 160ms ease !important;
+  pointer-events: none !important;
+}
+
+.select-wrap:hover::after {
+  border-top-color: #000 !important;
+  transform: translateY(-40%) !important;
+}
+
+/* 悬停预览：隐藏所有 UI，仅保留背景图层 */
+body.peek-hide .ui-visible { display: none !important; }
+/* 取消顶层柔白叠层，纯背景呈现 */
+body.peek-hide::before { opacity: 0 !important; }
+/* 隐藏背景加载遮罩（若仍在加载中） */
+body.peek-hide .cg-loading-overlay { display: none !important; }
+
+/* 兼容补充：对 body 同步隐藏原生滚动条并稳定滚动槽，避免不同 UA 的滚动容器差异导致布局抖动 */
+body {
+  /* 某些浏览器仍以 body 作为滚动容器，需同步设置 */
+  scrollbar-width: none !important;              /* Firefox */
+  scrollbar-gutter: stable both-edges !important;/* 预留稳定滚动槽，避免显隐造成布局变化 */
+  -ms-overflow-style: none !important;           /* 旧版 IE/Edge */
+}
+
+/* WebKit 浏览器隐藏滚动条（body 级别） */
+body::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 全局四角三角形浅黑半透明过渡渐变（覆盖在 CG 背景之上、UI 之下） */
+.corner-fades {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: 2 !important; /* 位于 cg-layer 上方，同容器内以文档序叠加 */
+}
+
+.corner-tri {
+  position: absolute !important;
+  width: 51vmin !important;
+  height: 51vmin !important;
+  /* 允许在极小屏上自动缩放，可按需调整为 45vmin/54vmin */
+  opacity: 1 !important; /* 透明度由渐变控制 */
+  /* 不使用强模糊，改由径向渐变在到达斜边中点前过渡为透明，避免“锋利边线”感 */
+  will-change: opacity, transform !important;
+}
+
+/* 等腰直角三角形：从直角顶点开始，沿指向斜边中点方向的整体透明度过渡（≈ 0.707L） */
+/* 左上角：直角顶点 (0,0)，斜边中点在 (L/2, L/2)；径向渐变中心设在角点，72% 处透明 */
+.corner-tri.tl {
+  top: 0 !important;
+  left: 0 !important;
+  clip-path: polygon(0 0, 100% 0, 0 100%) !important;
+  background: radial-gradient(
+    circle at 0 0,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.45) 18%,
+    rgba(0, 0, 0, 0.00) 50%,
+    rgba(0, 0, 0, 0.00) 100%
+  ) !important;
+}
+
+/* 右上角：直角顶点 (100%,0) */
+.corner-tri.tr {
+  top: 0 !important;
+  right: 0 !important;
+  clip-path: polygon(100% 0, 100% 100%, 0 0) !important;
+  background: radial-gradient(
+    circle at 100% 0,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.45) 18%,
+    rgba(0, 0, 0, 0.00) 50%,
+    rgba(0, 0, 0, 0.00) 100%
+  ) !important;
+}
+
+/* 左下角：直角顶点 (0,100%) */
+.corner-tri.bl {
+  bottom: 0 !important;
+  left: 0 !important;
+  clip-path: polygon(0 100%, 100% 100%, 0 0) !important;
+  background: radial-gradient(
+    circle at 0 100%,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.45) 18%,
+    rgba(0, 0, 0, 0.00) 50%,
+    rgba(0, 0, 0, 0.00) 100%
+  ) !important;
+}
+
+/* 右下角：直角顶点 (100%,100%) */
+.corner-tri.br {
+  bottom: 0 !important;
+  right: 0 !important;
+  clip-path: polygon(100% 0, 0 100%, 100% 100%) !important;
+  background: radial-gradient(
+    circle at 100% 100%,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.45) 18%,
+    rgba(0, 0, 0, 0.00) 50%,
+    rgba(0, 0, 0, 0.00) 100%
+  ) !important;
+}
