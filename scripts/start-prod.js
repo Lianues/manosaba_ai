@@ -9,8 +9,8 @@ const port = config.frontendPort;
 
 console.log(`🚀 启动生产服务器，端口: ${port}`);
 
-// 启动 Next.js 生产服务器
-const child = spawn('npx', ['next', 'start', '-p', port.toString()], {
+// 启动 Next.js 生产服务器，只绑定到本地接口
+const child = spawn('npx', ['next', 'start', '-p', port.toString(), '--hostname', 'localhost'], {
   stdio: 'inherit',
   shell: true
 });
