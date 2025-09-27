@@ -518,44 +518,41 @@ useEffect(() => {
       ) : (
         <div className="glass-card rounded-[4px] border border-black/25 bg-white text-black w-[360px] shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
           <div className="p-3">
-            {/* 标题独立一行 */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[16px] leading-6 font-semibold truncate">
-                  {current ? current.name : "无可用音乐"}
-                </div>
-              </div>
-              {/* 右侧控制：初始页的一键隐藏（本轮） + 收起按钮 */}
-              <div className="flex items-center gap-2">
-                {isStartPhase && !startAudioHidden && (
-                  <>
-                    <button
-                      aria-label="本轮隐藏：立即隐藏初始页音频（刷新后恢复）"
-                      title="本轮隐藏：立即隐藏初始页音频（刷新后恢复）"
-                      className="h-8 px-2 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select text-[12px] leading-5"
-                      onClick={hideForThisRound}
-                    >
-                      本轮隐藏
-                    </button>
-                    <button
-                      aria-label="下轮隐藏：下次进入初始页时隐藏一次（随后自动恢复）"
-                      title="下轮隐藏：下次进入初始页时隐藏一次（随后自动恢复）"
-                      className="h-8 px-2 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select text-[12px] leading-5"
-                      onClick={hideForNextRound}
-                    >
-                      下轮隐藏
-                    </button>
-                  </>
-                )}
-                <button
-                  aria-label="收起播放器"
-                  title="收起播放器"
-                  className="h-8 w-8 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select"
-                  onClick={() => setCollapsed(true)}
-                >
-                  ▾
-                </button>
-              </div>
+            {/* 歌曲标题独立一行 */}
+            <div className="text-[16px] leading-6 font-semibold truncate">
+              {current ? current.name : "无可用音乐"}
+            </div>
+
+            {/* 控制按钮行 */}
+            <div className="mt-2 flex items-center justify-end gap-2">
+              {isStartPhase && !startAudioHidden && (
+                <>
+                  <button
+                    aria-label="本轮隐藏：立即隐藏初始页音频（刷新后恢复）"
+                    title="本轮隐藏：立即隐藏初始页音频（刷新后恢复）"
+                    className="h-8 px-2 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select text-[12px] leading-5"
+                    onClick={hideForThisRound}
+                  >
+                    本轮隐藏
+                  </button>
+                  <button
+                    aria-label="下轮隐藏：下次进入初始页时隐藏一次（随后自动恢复）"
+                    title="下轮隐藏：下次进入初始页时隐藏一次（随后自动恢复）"
+                    className="h-8 px-2 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select text-[12px] leading-5"
+                    onClick={hideForNextRound}
+                  >
+                    下轮隐藏
+                  </button>
+                </>
+              )}
+              <button
+                aria-label="收起播放器"
+                title="收起播放器"
+                className="h-8 w-8 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select"
+                onClick={() => setCollapsed(true)}
+              >
+                ▾
+              </button>
             </div>
 
             {/* 默认播放音乐开关（持久化，默认不勾选） */}
