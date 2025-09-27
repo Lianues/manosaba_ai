@@ -12,7 +12,7 @@ type PlayMode = "list" | "single" | "shuffle";
 
 const MUSIC_PREFIX = "/music/";
 const STORAGE_KEY = "manosaba_ai.music_player";
-const START_HIDE_KEY = "manosaba_ai.start_audio_hidden"; // 临时标记：初始页面隐藏音频（本轮，刷新后清除）
+const START_HIDE_KEY = "manosaba_ai.start_audio_hidden"; // 下轮隐藏：下次进入初始页时隐藏一次（页面加载后自动清除）
 
 function stripExt(file: string) {
   const idx = file.lastIndexOf(".");
@@ -142,12 +142,12 @@ useEffect(() => {
   } catch {}
 }, []);
 
-// 读取本轮（临时）"初始页面隐藏音频组件"标记，并在页面加载时清除（确保刷新后恢复）
+ // 读取“下轮隐藏”标记：若存在则本次初始页隐藏音频组件；随后立即清除（仅隐藏一次）
 useEffect(() => {
   try {
     const mark = sessionStorage.getItem(START_HIDE_KEY);
     setStartAudioHidden(mark === "1");
-    // 页面加载时立即清除标记，确保下次刷新恢复显示
+    // 页面加载后立即清除标记，确保只隐藏一次
     sessionStorage.removeItem(START_HIDE_KEY);
   } catch {}
 }, []);
@@ -455,11 +455,19 @@ useEffect(() => {
     } catch {}
   }
 
-  // 本轮隐藏初始页音频：设置临时标记并立即隐藏（刷新后自动恢复）
+   // 本轮隐藏：立即隐藏当前初始页音频（刷新后恢复显示）
   function hideForThisRound() {
     try {
       // 使用一个临时的内存标记，不写入 sessionStorage（避免刷新后仍隐藏）
       setStartAudioHidden(true);
+    } catch {}
+  }
+  
+  // 下轮隐藏：点击后将在“下次进入初始页”时隐藏一次（随后自动恢复显示）
+  function hideForNextRound() {
+    try {
+      // 将标记写入 sessionStorage，供下一次页面加载时读取；加载后会自动清除
+      sessionStorage.setItem(START_HIDE_KEY, "1");
     } catch {}
   }
 
@@ -492,14 +500,12 @@ useEffect(() => {
   const modeLabel =
     mode === "list" ? "列表循环" : mode === "single" ? "单曲循环" : "随机播放";
 
-  // 若处于初始页面且已选择隐藏本轮音频，则不渲染组件（直到刷新）
-  if (isStartPhase && startAudioHidden) {
-    return null;
-  }
+  // 若处于初始页面且选择了隐藏，则仅隐藏UI面板但保留音频元素以继续执行默认配置（如自动播放）
+  const hideUi = isStartPhase && startAudioHidden;
 
   return (
     <div className="ui-visible fixed bottom-3 right-3 z-[58] select-none" aria-label="音乐播放控制">
-      {collapsed ? (
+      {!hideUi && (collapsed ? (
         // 收起态：仅显示一个向上箭头用于展开
         <button
           aria-label="展开音乐播放器"
@@ -522,14 +528,24 @@ useEffect(() => {
               {/* 右侧控制：初始页的一键隐藏（本轮） + 收起按钮 */}
               <div className="flex items-center gap-2">
                 {isStartPhase && !startAudioHidden && (
-                  <button
-                    aria-label="隐藏初始页音频（本轮，直至刷新）"
-                    title="隐藏初始页音频（本轮，直至刷新）"
-                    className="h-8 px-2 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select text-[12px] leading-5"
-                    onClick={hideForThisRound}
-                  >
-                    隐藏本轮
-                  </button>
+                  <>
+                    <button
+                      aria-label="本轮隐藏：立即隐藏初始页音频（刷新后恢复）"
+                      title="本轮隐藏：立即隐藏初始页音频（刷新后恢复）"
+                      className="h-8 px-2 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select text-[12px] leading-5"
+                      onClick={hideForThisRound}
+                    >
+                      本轮隐藏
+                    </button>
+                    <button
+                      aria-label="下轮隐藏：下次进入初始页时隐藏一次（随后自动恢复）"
+                      title="下轮隐藏：下次进入初始页时隐藏一次（随后自动恢复）"
+                      className="h-8 px-2 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select text-[12px] leading-5"
+                      onClick={hideForNextRound}
+                    >
+                      下轮隐藏
+                    </button>
+                  </>
                 )}
                 <button
                   aria-label="收起播放器"
@@ -673,7 +689,7 @@ useEffect(() => {
             )}
           </div>
         </div>
-      )}
+      ))}
 
       {/* 音频元素始终保留，以便收起时继续播放 */}
       <audio ref={audioRef} preload="metadata" className="hidden" />
