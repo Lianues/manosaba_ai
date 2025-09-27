@@ -535,22 +535,22 @@ body::-webkit-scrollbar {
 
 .corner-tri {
   position: absolute !important;
-  width: 51vmin !important;
-  height: 51vmin !important;
-  /* 允许在极小屏上自动缩放，可按需调整为 45vmin/54vmin */
+  width: 61.2vmin !important;
+  height: 61.2vmin !important;
+  /* 边长增加1/5：51vmin × 1.2 = 61.2vmin */
   opacity: 1 !important; /* 透明度由渐变控制 */
-  /* 不使用强模糊，改由径向渐变在到达斜边中点前过渡为透明，避免“锋利边线”感 */
+  /* 不使用强模糊，改由线性渐变在到达斜边中点前过渡为透明，避免"锋利边线"感 */
   will-change: opacity, transform !important;
 }
 
-/* 等腰直角三角形：从直角顶点开始，沿指向斜边中点方向的整体透明度过渡（≈ 0.707L） */
-/* 左上角：直角顶点 (0,0)，斜边中点在 (L/2, L/2)；径向渐变中心设在角点，72% 处透明 */
+/* 等腰直角三角形：从直角顶点开始，沿着垂直于底边的高线方向进行线性过渡 */
+/* 左上角：直角顶点 (0,0)，沿着垂直于斜边的方向渐变 */
 .corner-tri.tl {
   top: 0 !important;
   left: 0 !important;
   clip-path: polygon(0 0, 100% 0, 0 100%) !important;
-  background: radial-gradient(
-    circle at 0 0,
+  background: linear-gradient(
+    135deg,
     rgba(0, 0, 0, 0.55) 0%,
     rgba(0, 0, 0, 0.45) 18%,
     rgba(0, 0, 0, 0.00) 50%,
@@ -558,13 +558,13 @@ body::-webkit-scrollbar {
   ) !important;
 }
 
-/* 右上角：直角顶点 (100%,0) */
+/* 右上角：直角顶点 (100%,0)，沿着垂直于斜边的方向渐变 */
 .corner-tri.tr {
   top: 0 !important;
   right: 0 !important;
   clip-path: polygon(100% 0, 100% 100%, 0 0) !important;
-  background: radial-gradient(
-    circle at 100% 0,
+  background: linear-gradient(
+    225deg,
     rgba(0, 0, 0, 0.55) 0%,
     rgba(0, 0, 0, 0.45) 18%,
     rgba(0, 0, 0, 0.00) 50%,
@@ -572,13 +572,13 @@ body::-webkit-scrollbar {
   ) !important;
 }
 
-/* 左下角：直角顶点 (0,100%) */
+/* 左下角：直角顶点 (0,100%)，沿着垂直于斜边的方向渐变 */
 .corner-tri.bl {
   bottom: 0 !important;
   left: 0 !important;
   clip-path: polygon(0 100%, 100% 100%, 0 0) !important;
-  background: radial-gradient(
-    circle at 0 100%,
+  background: linear-gradient(
+    45deg,
     rgba(0, 0, 0, 0.55) 0%,
     rgba(0, 0, 0, 0.45) 18%,
     rgba(0, 0, 0, 0.00) 50%,
@@ -586,13 +586,13 @@ body::-webkit-scrollbar {
   ) !important;
 }
 
-/* 右下角：直角顶点 (100%,100%) */
+/* 右下角：直角顶点 (100%,100%)，沿着垂直于斜边的方向渐变 */
 .corner-tri.br {
   bottom: 0 !important;
   right: 0 !important;
   clip-path: polygon(100% 0, 0 100%, 100% 100%) !important;
-  background: radial-gradient(
-    circle at 100% 100%,
+  background: linear-gradient(
+    315deg,
     rgba(0, 0, 0, 0.55) 0%,
     rgba(0, 0, 0, 0.45) 18%,
     rgba(0, 0, 0, 0.00) 50%,
