@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { parseFullStoryOutlineXml, parseStoryOutlineXml, type FullOutlineXML, type OutlineXML } from "@/lib/xml";
+import { parseFullStoryOutlineXml, parseStoryOutlineXml, parseStoryXml, type FullOutlineXML, type OutlineXML } from "@/lib/xml";
+import { buildFinalPrompt } from "@/lib/prompt";
+import { postChatCompletionsFromLocalConfig } from "../lib/aiClient";
 import { saveOutlineToHistory, loadOutlineHistory, clearOutlineHistory, type OutlineHistoryEntry } from "../lib/history";
 
 /**
@@ -13,14 +15,6 @@ import { saveOutlineToHistory, loadOutlineHistory, clearOutlineHistory, type Out
  */
 
 type StageStatus = "idle" | "running" | "done" | "error";
-type OutlineResp = {
-  ok: boolean;
-  text?: string;
-  parseOk?: boolean;
-  composedWithOutline?: string;
-  extractedPremise?: string;
-  extractedBeats?: string[];
-};
 
 
 /** 用于前端内存中的“中文提示词”结构（不落盘） */
@@ -154,6 +148,72 @@ function buildCharactersXml(protagonistName: string, list: PromptCharacterCN[]):
   lines.push('</人物提示词>');
   return lines.join('\n');
 }
+
+// ==== 前端 AI 补全解析与模板（无后端依赖） ====
+type CompletionExtracted = {
+  name: string;
+  age: string;
+  appearanceClothes: string;
+  magicPre: string;
+  magicPost: string;
+  tragicStory: string;
+  personality: string;
+  originalSin: string;
+};
+
+function stripCDataLocal(s: string): string {
+  return (s ?? "").replace(/<!\[CDATA\[/g, "").replace(/\]\]>/g, "");
+}
+function innerTextLocal(xml: string, tag: string): string | null {
+  const re = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
+  const m = xml.match(re);
+  if (!m) return null;
+  return stripCDataLocal(m[1]).trim();
+}
+function parseCharacterCompletionXml(xml: string): CompletionExtracted | null {
+  if (typeof xml !== "string" || !xml.trim()) return null;
+  const rootMatch = xml.match(/<characterCompletion\b[^>]*>([\s\S]*?)<\/characterCompletion>/i);
+  const scope = rootMatch ? rootMatch[1] : xml;
+
+  const name = innerTextLocal(scope, "name") ?? "";
+  const age = innerTextLocal(scope, "age") ?? "";
+  const appearanceClothes = innerTextLocal(scope, "appearanceClothes") ?? "";
+  const magicPre = innerTextLocal(scope, "pre") ?? "";
+  const magicPost = innerTextLocal(scope, "post") ?? "";
+  const tragicStory = innerTextLocal(scope, "tragicStory") ?? "";
+  const personality = innerTextLocal(scope, "personality") ?? "";
+  const originalSin = innerTextLocal(scope, "originalSin") ?? "";
+
+  if (!name || !age || !appearanceClothes || !tragicStory || !personality || !originalSin) {
+    return null;
+  }
+  return { name, age, appearanceClothes, magicPre, magicPost, tragicStory, personality, originalSin };
+}
+
+// 与后端 fallback 一致的“人物补全”模板（前端直接使用）
+const CHARACTER_COMPLETION_TEMPLATE = `任务：生成一个人物设定（女性，15-18岁），并以 XML 输出，字段如下：
+- 姓名
+- 年龄
+- 外貌衣着
+- 魔法（包括魔女化前的能力和魔女化后的能力）
+- 悲惨故事
+- 性格
+- 原罪
+
+XML 输出格式（严格）：
+仅输出下列 XML，不要任何额外解释或文本，内容使用中文，必要符号置于 CDATA 中。
+<characterCompletion>
+  <name><![CDATA[女性姓名]]></name>
+  <age><![CDATA[15-18岁之间的年龄]]></age>
+  <appearanceClothes><![CDATA[外貌与衣着（黑暗哥特风格，50-120字）]]></appearanceClothes>
+  <magic>
+    <pre><![CDATA[魔女化前的能力（50-120字，具体细节）]]></pre>
+    <post><![CDATA[魔女化后的能力（初期表现，50-120字，具体细节）]]></post>
+  </magic>
+  <tragicStory><![CDATA[与魔女化相关的黑暗残酷故事，体现心理创伤，80-200字]]></tragicStory>
+  <personality><![CDATA[同时体现负面与正面性格，结合悲惨故事，3-8条或150字以内]]></personality>
+  <originalSin><![CDATA[导致严重负面行为/杀人的根因（七宗罪或自定义，50-120字）]]></originalSin>
+</characterCompletion>`;
 
 type UIQuestion = {
   id: string;
@@ -556,7 +616,7 @@ export default function Home() {
 
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [story, setStory] = useState<{ title: string; content: string } | null>(null);
+  const [, setStory] = useState<{ title: string; content: string } | null>(null);
   const [completing, setCompleting] = useState<Record<string, boolean>>({});
   function isCompleting(id: string): boolean {
     return !!completing[id];
@@ -740,7 +800,7 @@ export default function Home() {
     return () => {
       mounted = false;
     };
-  }, [currentCgIdx]);
+  }, [currentCgIdx, cgList, resolveAndLoad]);
 
   // 清理：组件卸载时撤销所有 objectURL，避免内存泄露
   useEffect(() => {
@@ -800,7 +860,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [currentCgIdx]);
+  }, [goNext, goPrev]);
 
   // 工具方法：统计每个角色的回答数
   function answeredCount(role: RoleForm): number {
@@ -810,7 +870,7 @@ export default function Home() {
   const selectedRoles = useMemo(() => roles.filter((r) => r.selected), [roles]);
   const invalidSelectedRoles = useMemo(
     () => selectedRoles.filter((r) => answeredCount(r) < 7),
-    [selectedRoles, roles]
+    [selectedRoles]
   );
 
   const canSubmit = useMemo(
@@ -934,33 +994,13 @@ export default function Home() {
         .filter((x) => x.a.trim().length > 0)
         .map((x) => ({ q: x.q.trim(), a: x.a.trim() }));
 
-      const r = await fetch("/api/session/complete-role", {
-        method: "POST",
-        headers: (() => {
-          try {
-            const raw = localStorage.getItem("manosaba_ai.api_config");
-            const cfg = raw ? JSON.parse(raw) : {};
-            const h: Record<string, string> = { "Content-Type": "application/json" };
-            if (cfg.AI_API_KEY) h["x-ai-api-key"] = cfg.AI_API_KEY;
-            if (cfg.AI_BASE_URL) h["x-ai-base-url"] = cfg.AI_BASE_URL;
-            if (cfg.AI_MODEL_ID) h["x-ai-model-id"] = cfg.AI_MODEL_ID;
-            return h;
-          } catch {
-            return { "Content-Type": "application/json" };
-          }
-        })(),
-        body: JSON.stringify({
-          sessionId,
-          roleId: role.roleId,
-          roleName: role.roleName.trim() || "未命名角色",
-          qa,
-        }),
-      });
-      if (!r.ok) throw new Error(`AI 补全接口错误：${r.status}`);
-      const j = await r.json();
-      if (!j.ok || j.parseOk === false) throw new Error("AI 补全解析失败");
+      const { finalPrompt } = buildFinalPrompt(qa as Array<{ q: string; a: string }>, CHARACTER_COMPLETION_TEMPLATE);
+      const res = await postChatCompletionsFromLocalConfig(finalPrompt);
+      if (!res.ok) throw new Error(res.message || "AI 补全失败");
+      const parsed = parseCharacterCompletionXml(res.text || "");
+      if (!parsed) throw new Error("AI 补全解析失败");
 
-      const { name, age, appearanceClothes, magicPre, magicPost, tragicStory, personality, originalSin } = j.extracted ?? {};
+      const { name, age, appearanceClothes, magicPre, magicPost, tragicStory, personality, originalSin } = parsed;
 
       setRoles((prev) =>
         prev.map((rr) =>
@@ -1088,31 +1128,12 @@ export default function Home() {
 
       setStage((s) => ({ ...s, profile: "done", outline: "running" }));
 
-      // 5) 仅调用“生成大纲”，并将 rawPrompt 直接发送给 AI
-      const rOutline = await fetch("/api/session/generate-outline", {
-        method: "POST",
-        headers: (() => {
-          try {
-            const raw = localStorage.getItem("manosaba_ai.api_config");
-            const cfg = raw ? JSON.parse(raw) : {};
-            const h: Record<string, string> = { "Content-Type": "application/json" };
-            if (cfg.AI_API_KEY) h["x-ai-api-key"] = cfg.AI_API_KEY;
-            if (cfg.AI_BASE_URL) h["x-ai-base-url"] = cfg.AI_BASE_URL;
-            if (cfg.AI_MODEL_ID) h["x-ai-model-id"] = cfg.AI_MODEL_ID;
-            return h;
-          } catch {
-            return { "Content-Type": "application/json" };
-          }
-        })(),
-        body: JSON.stringify({ sessionId, rawPrompt }),
-      });
-      if (!rOutline.ok) throw new Error(`大纲接口错误：${rOutline.status}`);
-      const jOutline: OutlineResp = await rOutline.json();
-      const outlineXml = jOutline.text ?? "";
-
-      if (!jOutline.ok || jOutline.parseOk === false || !outlineXml) {
-        throw new Error("故事大纲解析失败，请稍后重试。");
+      // 5) 前端直接调用 LLM，发送 rawPrompt 获取故事大纲 XML
+      const outlineRes = await postChatCompletionsFromLocalConfig(rawPrompt);
+      if (!outlineRes.ok || !outlineRes.text) {
+        throw new Error(outlineRes.message || "大纲生成失败（LLM响应为空或错误）");
       }
+      const outlineXml = outlineRes.text;
 
       // 解析完整/简易结构
       const full = parseFullStoryOutlineXml(outlineXml);
@@ -1121,13 +1142,6 @@ export default function Home() {
       setOutlineMinimal(minimal ?? null);
       setOutlineTitle(full?.title);
       setOutlineXmlText(outlineXml);
-
-      // 6) 保存完整大纲 XML（只保存到内存后端）
-      void fetch("/api/session/save-outline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, outlineXml }),
-      }).catch(() => {});
 
       // 保存至浏览器历史（localStorage）
       const entry: OutlineHistoryEntry = {
@@ -1189,7 +1203,7 @@ export default function Home() {
       if (isGeneratedKey(orderedKeys[i])) last = i;
     }
     return last;
-  }, [orderedKeys, sectionStories]);
+  }, [orderedKeys, isGeneratedKey]);
 
   function allowCreate(key: string, index: number): boolean {
     if (index < 0) return false;
@@ -1207,7 +1221,7 @@ export default function Home() {
   const [historyTick, setHistoryTick] = useState<number>(0);
   const historyList: OutlineHistoryEntry[] = useMemo(() => {
     try { return loadOutlineHistory?.() ?? []; } catch { return []; }
-  }, [historyTick, showOutlineHistory]);
+  }, [historyTick]);
   function refreshOutlineHistory() { setHistoryTick((x) => x + 1); }
   function clearOutlineHistoryAndRefresh() { try { clearOutlineHistory?.(); } catch {} setHistoryTick((x) => x + 1); }
 
@@ -1247,8 +1261,6 @@ export default function Home() {
       }, 300);
     } catch {}
   }
-  function getStoriesKeyFor(outlineKey: string) { return SECTION_STORIES_PREFIX + outlineKey; }
-  function getExpandKeyFor(outlineKey: string) { return SECTION_EXPAND_PREFIX + outlineKey; }
 
   // 为某节创建故事
   async function generateSectionStory(chIdx: number, secIdx: number, sectionTitle: string) {
@@ -1321,35 +1333,15 @@ export default function Home() {
       ].filter(Boolean);
       const rawPrompt = parts.join("\n\n");
 
-      // 调用“为小节生成故事”的 API
-      const r = await fetch("/api/session/generate-section-story", {
-        method: "POST",
-        headers: (() => {
-          try {
-            const raw = localStorage.getItem("manosaba_ai.api_config");
-            const cfg = raw ? JSON.parse(raw) : {};
-            const h: Record<string, string> = { "Content-Type": "application/json" };
-            if (cfg.AI_API_KEY) h["x-ai-api-key"] = cfg.AI_API_KEY;
-            if (cfg.AI_BASE_URL) h["x-ai-base-url"] = cfg.AI_BASE_URL;
-            if (cfg.AI_MODEL_ID) h["x-ai-model-id"] = cfg.AI_MODEL_ID;
-            return h;
-          } catch {
-            return { "Content-Type": "application/json" };
-          }
-        })(),
-        body: JSON.stringify({ sessionId, rawPrompt }),
-      });
-      if (!r.ok) {
-        showErrorPopup(`生成小节故事接口错误：${r.status}`);
+      // 前端直接调用 LLM 生成当前小节
+      const res = await postChatCompletionsFromLocalConfig(rawPrompt);
+      if (!res.ok) {
+        showErrorPopup(res.message ?? "生成小节故事失败");
         return;
       }
-      const j = await r.json();
-      if (!j.ok) {
-        showErrorPopup(j?.message ?? "生成小节故事失败");
-        return;
-      }
-
-      const text: string = j.finalStory?.content || j.text || "";
+      const rawText = res.text || "";
+      const parsedStory = parseStoryXml(rawText);
+      const text: string = parsedStory?.content || rawText;
       if (!text) {
         showErrorPopup("生成的小节故事为空");
         return;

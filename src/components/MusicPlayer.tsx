@@ -181,7 +181,7 @@ useEffect(() => {
     if (pos !== -1 && pos !== shufflePos) {
       setShufflePos(pos);
     }
-  }, [tracks, mode, idx]);
+  }, [tracks, mode, idx, shuffleOrder, shufflePos]);
 
   // ensure audio src updates when track or list ready
   useEffect(() => {
@@ -202,7 +202,7 @@ useEffect(() => {
       setCurrentTime(0);
       // 应用音量
       audio.volume = Math.min(Math.max(volume, 0), 1);
-      // 勾选“默认播放音乐”后，重新进入页面尝试自动播放（可能被浏览器拦截）
+      // 勾选"默认播放音乐"后，重新进入页面尝试自动播放（可能被浏览器拦截）
       try {
         const b = document.body;
         if (!b.classList.contains("initial-black")) {
@@ -221,7 +221,7 @@ useEffect(() => {
     return () => {
       audio.removeEventListener("loadedmetadata", onLoaded);
     };
-  }, [tracks, idx]);
+  }, [tracks, idx, autoPlayPref, isPlaying, volume]);
 
   // 当页面进入 initial-ready（背景加载完且初始黑屏消失）后：若已勾选默认播放则尝试自动播放
   useEffect(() => {
@@ -254,7 +254,7 @@ useEffect(() => {
       setDuration(audio.duration || 0);
     };
     const onEnd = () => {
-      // 更新“最近播放”记录
+      // 更新"最近播放"记录
       lastPlayedRef.current = idx;
 
       if (mode === "single") {
@@ -268,8 +268,8 @@ useEffect(() => {
         } catch {}
         return;
       }
-      // 其他模式：使用“下一首”逻辑
-      handleNext(true);
+      // 其他模式：使用"下一首"逻辑
+      handleNext();
     };
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("ended", onEnd);
@@ -277,7 +277,7 @@ useEffect(() => {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("ended", onEnd);
     };
-  }, [dragging, mode, idx, isPlaying]);
+  }, [dragging, mode, idx, isPlaying, handleNext]);
 
   // play/pause toggle
   useEffect(() => {
@@ -304,7 +304,7 @@ useEffect(() => {
     setIsPlaying((v) => !v);
   }
 
-  function handlePrev(_auto = false) {
+  function handlePrev() {
     // 切歌后从头播放，不恢复百分比
     restoreTimeRef.current = false;
     setCurrentTime(0);
@@ -338,7 +338,7 @@ useEffect(() => {
     setIsPlaying(true);
   }
 
-  function handleNext(_auto = false) {
+  function handleNext() {
     // 切歌后从头播放，不恢复百分比
     restoreTimeRef.current = false;
     setCurrentTime(0);
@@ -579,7 +579,7 @@ useEffect(() => {
                 <button
                   aria-label="上一首"
                   className="h-10 w-10 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select"
-                  onClick={() => handlePrev(false)}
+                  onClick={() => handlePrev()}
                 >
                   ◁
                 </button>
@@ -593,7 +593,7 @@ useEffect(() => {
                 <button
                   aria-label="下一首"
                   className="h-10 w-10 rounded-[4px] border border-black/25 bg-white hover:bg-black/5 active:scale-[0.98] transition-transform no-select"
-                  onClick={() => handleNext(false)}
+                  onClick={() => handleNext()}
                 >
                   ▷
                 </button>
