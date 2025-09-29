@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { parseFullStoryOutlineXml, parseStoryOutlineXml, parseStoryXml, type FullOutlineXML, type OutlineXML } from "@/lib/xml";
 import { buildFinalPrompt } from "@/lib/prompt";
 import { postChatCompletionsFromLocalConfig } from "../lib/aiClient";
@@ -640,7 +640,10 @@ export default function Home() {
 
 
   // CG 背景列表与切换状态（高质感切换 + 会话缓存 + 记忆当前索引）
-  const cgList = ["/cg/Still_001_001.png", "/cg/Still_002_001.png", "/cg/Still_110_001.png", "/cg/Still_360_001.png", "/cg/Still_400_001.png"];
+  const cgList = useMemo(
+    () => ["/cg/Still_001_001.png", "/cg/Still_002_001.png", "/cg/Still_110_001.png", "/cg/Still_360_001.png", "/cg/Still_400_001.png"],
+    []
+  );
 
   // 会话级缓存：原始路径 -> objectURL（首次加载后复用，避免重复下载）
   const cacheRef = useRef<Map<string, string>>(new Map());
@@ -756,7 +759,7 @@ export default function Home() {
     setArrowVisible(leftZoneActive || rightZoneActive);
   }, [leftZoneActive, rightZoneActive]);
 
-  async function ensureCached(path: string): Promise<string> {
+  const ensureCached = useCallback(async (path: string): Promise<string> => {
     const cached = cacheRef.current.get(path);
     if (cached) return cached;
     const res = await fetch(path, { cache: "force-cache" });
@@ -764,10 +767,10 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     cacheRef.current.set(path, url);
     return url;
-  }
+  }, []);
 
   // 解析并等待图片加载完成，保证切换时不出现空白（返回是否成功加载）
-  async function resolveAndLoad(path: string): Promise<{ url: string; ok: boolean }> {
+  const resolveAndLoad = useCallback(async (path: string): Promise<{ url: string; ok: boolean }> => {
     try {
       const url = await ensureCached(path);
       const ok = await new Promise<boolean>((resolve) => {
@@ -781,7 +784,7 @@ export default function Home() {
       // 网络或缓存失败时，标记为未成功加载
       return { url: path, ok: false };
     }
-  }
+  }, [ensureCached]);
 
   // 当索引变化时：更新本地存储并解析当前图的缓存 URL（等待图片加载）
   useEffect(() => {
