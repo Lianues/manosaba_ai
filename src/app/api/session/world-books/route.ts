@@ -1,6 +1,8 @@
 import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 
+// 配置为静态导出
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 type Node = { type: 'folder' | 'file'; name: string; children?: Node[]; content?: string };
@@ -51,7 +53,7 @@ function renderXml(node: Node, indent = ''): string {
   }
 }
 
-export async function GET(_req: Request): Promise<Response> {
+export async function GET(): Promise<Response> {
   try {
     const baseDir = join(process.cwd(), 'game', 'world_books');
     const root = await buildTree(baseDir, 'world_books');
@@ -60,7 +62,7 @@ export async function GET(_req: Request): Promise<Response> {
       status: 200,
       headers: { 'Content-Type': 'application/xml; charset=utf-8' },
     });
-  } catch (err: any) {
-    return Response.json({ error: 'Failed to read world_books', message: err?.message ?? 'Unknown error' }, { status: 500 });
+  } catch (err: unknown) {
+    return Response.json({ error: 'Failed to read world_books', message: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 });
   }
 }

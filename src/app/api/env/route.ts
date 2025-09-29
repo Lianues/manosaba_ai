@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+// 配置为静态导出
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 type EnvMap = Record<string, string>;
@@ -94,9 +96,9 @@ export async function GET(): Promise<Response> {
       AI_MODEL_ID: map.AI_MODEL_ID ?? '',
     };
     return Response.json({ ok: true, env });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return Response.json(
-      { error: 'Internal Server Error', message: err?.message ?? 'Unknown error' },
+      { error: 'Internal Server Error', message: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -115,7 +117,7 @@ export async function POST(req: Request): Promise<Response> {
     const { map, raw } = await readEnvFile();
     const next: EnvMap = { ...map };
     for (const key of ['AI_API_KEY', 'AI_BASE_URL', 'AI_MODEL_ID'] as const) {
-      const val = (parsed.data as any)[key];
+      const val = parsed.data[key];
       if (typeof val === 'string') {
         next[key] = val;
       }
@@ -127,9 +129,9 @@ export async function POST(req: Request): Promise<Response> {
       AI_MODEL_ID: next.AI_MODEL_ID ?? '',
     };
     return Response.json({ ok: true, env });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return Response.json(
-      { error: 'Internal Server Error', message: err?.message ?? 'Unknown error' },
+      { error: 'Internal Server Error', message: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
   }

@@ -6,7 +6,8 @@ const config = readPortFromConfig();
 
 const nextConfig: NextConfig = {
   /* config options here */
-  devIndicators: false, // 禁用开发工具指示器
+  // 禁用开发工具指示器
+  // devIndicators: false,
   env: {
     FRONTEND_PORT: config.frontendPort.toString(),
     BACKEND_PORT: config.backendPort.toString(),
@@ -18,6 +19,12 @@ const nextConfig: NextConfig = {
     backendPort: config.backendPort,
     websocketPort: config.websocketPort,
   },
+  // 静态导出配置（可选）
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true
+  }
 };
 
 export default nextConfig;

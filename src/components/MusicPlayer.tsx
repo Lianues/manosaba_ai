@@ -304,7 +304,7 @@ useEffect(() => {
     setIsPlaying((v) => !v);
   }
 
-  function handlePrev(auto = false) {
+  function handlePrev(_auto = false) {
     // 切歌后从头播放，不恢复百分比
     restoreTimeRef.current = false;
     setCurrentTime(0);
@@ -338,7 +338,7 @@ useEffect(() => {
     setIsPlaying(true);
   }
 
-  function handleNext(auto = false) {
+  function handleNext(_auto = false) {
     // 切歌后从头播放，不恢复百分比
     restoreTimeRef.current = false;
     setCurrentTime(0);

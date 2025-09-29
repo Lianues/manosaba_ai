@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+// 配置为静态导出
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 type SavedStory = {
@@ -46,10 +48,10 @@ export async function POST(req: Request): Promise<Response> {
       contentLength: content.length,
       savedAt: savedStory.savedAt,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('SAVE STORY API error:', err);
     return Response.json(
-      { error: 'Internal Server Error', message: err?.message ?? 'Unknown error' },
+      { error: 'Internal Server Error', message: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -75,10 +77,10 @@ export async function GET(req: Request): Promise<Response> {
       content: story.content,
       savedAt: story.savedAt,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('GET STORY API error:', err);
     return Response.json(
-      { error: 'Internal Server Error', message: err?.message ?? 'Unknown error' },
+      { error: 'Internal Server Error', message: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
   }

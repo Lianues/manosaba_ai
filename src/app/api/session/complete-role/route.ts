@@ -4,6 +4,8 @@ import { QAItem, buildFinalPrompt } from '@/lib/prompt';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 
+// 配置为静态导出
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 // Body schema
@@ -181,10 +183,10 @@ XML 输出格式（严格）：
       finishReason: choice?.finish_reason,
       usage: result?.usage,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('SESSION COMPLETE-ROLE API error:', err);
     return Response.json(
-      { ok: false, error: 'Internal Server Error', message: err?.message ?? 'Unknown error' },
+      { ok: false, error: 'Internal Server Error', message: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
   }

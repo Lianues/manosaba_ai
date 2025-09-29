@@ -56,9 +56,9 @@ export default function ApiConfigPanel() {
       };
       setEnv(next);
       setLoadStatus("ok");
-    } catch (e: any) {
+    } catch (e: unknown) {
       setLoadStatus("error");
-      setErrorMsg(e?.message ?? "未知错误");
+      setErrorMsg(e instanceof Error ? e.message : "未知错误");
     }
   }, [open]);
 
@@ -79,9 +79,9 @@ export default function ApiConfigPanel() {
         // 广播前端配置更新事件
         try { window.dispatchEvent(new CustomEvent("api:configUpdated")); } catch {}
       }, 1600);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setSaveStatus("error");
-      setErrorMsg(e?.message ?? "未知错误");
+      setErrorMsg(e instanceof Error ? e.message : "未知错误");
     }
   }
 

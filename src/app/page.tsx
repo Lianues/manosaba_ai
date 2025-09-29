@@ -13,7 +13,6 @@ import { saveOutlineToHistory, loadOutlineHistory, clearOutlineHistory, type Out
  */
 
 type StageStatus = "idle" | "running" | "done" | "error";
-type QAItem = { q: string; a: string };
 type OutlineResp = {
   ok: boolean;
   text?: string;
@@ -21,26 +20,6 @@ type OutlineResp = {
   composedWithOutline?: string;
   extractedPremise?: string;
   extractedBeats?: string[];
-};
-type MultiSessionResp = {
-  ok: boolean;
-  parseOk?: boolean;
-  combinedProfilePrompt?: string;
-  roles?: Array<{
-    roleId: string;
-    roleName: string;
-    text: string;
-    extractedAppearance?: string;
-    extractedPreferences?: string;
-    composedProfilePrompt?: string;
-  }>;
-};
-type StoryResp = {
-  ok: boolean;
-  parseOk?: boolean;
-  finalStory?: { title: string; content: string };
-  extractedTitle?: string;
-  extractedContent?: string;
 };
 
 
@@ -53,10 +32,6 @@ interface PromptCharacter {
   tragic_story: string;   // 悲惨故事
   personality: string;    // 性格特质（正/负）
   original_sin: string;   // 原罪
-}
-interface PromptPayload {
-  protagonistName: string;     // 主人公名称
-  characters: PromptCharacter[]; // 13人（12选中 + 冰上 梅露露）
 }
 
 /** 最终发给 AI 的“中文键名”提示词结构 */
@@ -526,8 +501,8 @@ export default function Home() {
         // 同步状态类（上面的 effect 会处理），此处只需确保快速返回起始 UI
       } catch {}
     };
-    window.addEventListener("app:goHome" as any, goHome as any);
-    return () => window.removeEventListener("app:goHome" as any, goHome as any);
+    window.addEventListener("app:goHome" as keyof WindowEventMap, goHome as EventListener);
+    return () => window.removeEventListener("app:goHome" as keyof WindowEventMap, goHome as EventListener);
   }, []);
 
   // 客户端水合后加载数据
@@ -540,7 +515,6 @@ export default function Home() {
     } else {
       // 缓存为空时创建默认角色
       const id = typeof crypto !== "undefined" && "randomUUID" in crypto
-        // @ts-ignore
         ? crypto.randomUUID()
         : `role_${Date.now()}`;
       setRoles([
@@ -565,7 +539,6 @@ export default function Home() {
   const [step, setStep] = useState<"form" | "progress" | "result">("form");
   const [sessionId, setSessionId] = useState<string>(() => {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-      // @ts-ignore
       return crypto.randomUUID();
     }
     return `sess_${Date.now()}`;
@@ -600,7 +573,7 @@ export default function Home() {
   const [rolesPromptXml, setRolesPromptXml] = useState<string | null>(null);
   const [outlineFull, setOutlineFull] = useState<FullOutlineXML | null>(null);
   const [outlineMinimal, setOutlineMinimal] = useState<OutlineXML | null>(null);
-  const [outlineTitle, setOutlineTitle] = useState<string | undefined>(undefined);
+  const [, setOutlineTitle] = useState<string | undefined>(undefined);
   const [outlineXmlText, setOutlineXmlText] = useState<string>("");
   const [currentOutlineKey, setCurrentOutlineKey] = useState<string | null>(null);
   const [sectionExpand, setSectionExpand] = useState<Record<string, boolean>>({});
@@ -628,7 +601,7 @@ export default function Home() {
   const [bgLoading, setBgLoading] = useState<boolean>(true);
   // 避免 SSR 首屏使用索引 0 导致刷新后先显示首图再切到上次图：仅在水合后再渲染背景层；同时控制左右箭头/指示器显隐
   const [hydrated, setHydrated] = useState(false);
-  const [arrowVisible, setArrowVisible] = useState(false);
+  const [, setArrowVisible] = useState(false);
   // 分侧激活：用于只显示对应侧阴影
   const [leftZoneActive, setLeftZoneActive] = useState(false);
   const [rightZoneActive, setRightZoneActive] = useState(false);
@@ -688,7 +661,7 @@ export default function Home() {
 
     // 仅首屏：背景已加载但 UI 未显现 → 监听背景动画结束
     if (!initialUiShownRef.current && !bgLoading) {
-      let timeoutId: any = null;
+      let timeoutId: NodeJS.Timeout | null = null;
       const layer = document.querySelector(".cg-layer.cg-fade-in") as HTMLElement | null;
 
       const onEnd = () => {
@@ -848,8 +821,7 @@ export default function Home() {
   function resetAll() {
     const id =
       typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? // @ts-ignore
-          crypto.randomUUID()
+        ? crypto.randomUUID()
         : `role_${Date.now()}`;
     const newRoles = [
       {
@@ -861,22 +833,24 @@ export default function Home() {
       },
     ];
     setRoles(newRoles);
-    // 清除缓存
-    try {
-      localStorage.removeItem(ROLES_CACHE_KEY);
-    } catch (e) {
-      console.warn("Failed to clear roles cache:", e);
-    }
+    // 不再清除缓存，保留用户数据
     setSessionId(
       typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? // @ts-ignore
-          crypto.randomUUID()
+        ? crypto.randomUUID()
         : `sess_${Date.now()}`
     );
     setStage({ profile: "idle", outline: "idle", story: "idle" });
     setError(null);
     setStory(null);
     setStep("form");
+  }
+
+  function goToHomePage() {
+    // 只返回主页面，不清除任何缓存数据
+    setStep("form");
+    setStage({ profile: "idle", outline: "idle", story: "idle" });
+    setError(null);
+    setStory(null);
   }
 
   function clearCache() {
@@ -893,8 +867,7 @@ export default function Home() {
     setRoles((prev) => {
       const id =
         typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? // @ts-ignore
-            crypto.randomUUID()
+          ? crypto.randomUUID()
           : `role_${Date.now()}`;
       const nextIdx = prev.length + 1;
       return [
@@ -1022,8 +995,8 @@ export default function Home() {
               }
         )
       );
-    } catch (e: any) {
-      setError(e?.message ?? "AI 补全失败");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "AI 补全失败");
     } finally {
       setCompleting((prev) => ({ ...prev, [roleId]: false }));
     }
@@ -1091,13 +1064,13 @@ export default function Home() {
         人物列表: charactersCN,
       };
       setRolesPrompt(promptPayloadCN);
-      (window as any).rolesPrompt = promptPayloadCN;
+      (window as typeof window & { rolesPrompt?: typeof promptPayloadCN }).rolesPrompt = promptPayloadCN;
       console.info("rolesPrompt(CN Object)", promptPayloadCN);
 
       // 2) 将人物提示词转为 XML 字符串（不使用 JSON）
       const charactersXml = buildCharactersXml(protagonistName, charactersCN);
       setRolesPromptXml(charactersXml);
-      (window as any).rolesPromptXml = charactersXml;
+      (window as typeof window & { rolesPromptXml?: string }).rolesPromptXml = charactersXml;
       console.info("rolesPromptXml", charactersXml);
 
       // 3) 读取 world_books 大提示词（XML）与生成大纲模板原文，并替换 {{mainCharacter}}
@@ -1177,8 +1150,8 @@ export default function Home() {
       setOutlineXmlText(outlineXml);
 
       setStep("result");
-    } catch (e: any) {
-      setError(e?.message ?? "发生未知错误");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "发生未知错误");
       setStage((s) => {
         if (s.profile === "running") return { ...s, profile: "error" };
         if (s.outline === "running") return { ...s, outline: "error" };
@@ -1190,25 +1163,6 @@ export default function Home() {
     }
   }
 
-  function copyStory() {
-    if (!story) return;
-    const text = `${story.title}\n\n${story.content}`;
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).catch(() => {});
-    }
-  }
-
-  function downloadStory() {
-    if (!story) return;
-    const text = `${story.title}\n\n${story.content}`;
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${story.title || "story"}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
 
   // 每节故事生成缓存：键 = "chapterIdx-sectionIdx"
   const [sectionStories, setSectionStories] = useState<Record<string, string>>({});
@@ -1405,8 +1359,8 @@ export default function Home() {
       setSectionStories(prev => ({ ...prev, [key]: text }));
       setSectionExpand(prev => ({ ...prev, [key]: true })); // 默认生成后展开
       setGeneratingKey(null);
-    } catch (e: any) {
-      setError(e?.message ?? "生成小节故事失败");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "生成小节故事失败");
     } finally {
       setGeneratingKey(null);
     }
@@ -1443,8 +1397,8 @@ export default function Home() {
       // 更新阶段状态并跳转到结果页（仅展示大纲）
       setStage({ profile: "done", outline: "done", story: "idle" });
       setStep("result");
-    } catch (e: any) {
-      setError(e?.message ?? "读取历史失败");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "读取历史失败");
     }
   }
   // 载入指定历史大纲至当前工作区，支持从历史直接逐节创作
@@ -1469,8 +1423,8 @@ export default function Home() {
       setStage({ profile: "done", outline: "done", story: "idle" });
       setStep("result");
       setShowOutlineHistory(false);
-    } catch (e: any) {
-      setError(e?.message ?? "载入历史失败");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "载入历史失败");
     }
   }
   // 从历史卡片内“一键载入并生成指定小节”
@@ -2328,7 +2282,7 @@ export default function Home() {
                 <div className="ms-auto" />
                 <button
                   type="button"
-                  onClick={resetAll}
+                  onClick={goToHomePage}
                   className="h-12 px-6 rounded-[10px] border border-black bg-black text-white transition-[transform,opacity] active:scale-[0.99] hover:opacity-90"
                 >
                   重新开始

@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { getConfigFromRequest } from '@/lib/config';
-import { parseStoryOutlineXml, composeOutlineAppendPrompt, parseFullStoryOutlineXml, FullOutlineXML, FullOutlineChapter, FullOutlineSection } from '@/lib/xml';
+import { parseStoryOutlineXml, composeOutlineAppendPrompt, parseFullStoryOutlineXml, FullOutlineChapter, FullOutlineSection } from '@/lib/xml';
 
+// 配置为静态导出
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 const BodySchema = z.object({
@@ -106,10 +108,10 @@ export async function POST(req: Request): Promise<Response> {
         : extractedOutline?.beats,
       composedWithOutline,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('OUTLINE API error:', err);
     return Response.json(
-      { error: 'Internal Server Error', message: err?.message ?? 'Unknown error' },
+      { error: 'Internal Server Error', message: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
   }

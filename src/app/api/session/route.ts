@@ -3,6 +3,8 @@ import { getConfigFromRequest } from '@/lib/config';
 import { QAItem, buildFinalPrompt, DEFAULT_INSTRUCTION } from '@/lib/prompt';
 import { parseCharacterXml, composeProfilePrompt } from '@/lib/xml';
 
+// 配置为静态导出
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 type StoredSession = {
@@ -163,10 +165,10 @@ export async function POST(req: Request): Promise<Response> {
       extractedPreferences: extracted?.preferences,
       composedProfilePrompt: composedPrompt,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('SESSION API error:', err);
     return Response.json(
-      { error: 'Internal Server Error', message: err?.message ?? 'Unknown error' },
+      { error: 'Internal Server Error', message: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -200,10 +202,10 @@ export async function GET(req: Request): Promise<Response> {
       output: data.output,
       updatedAt: data.updatedAt,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('SESSION GET error:', err);
     return Response.json(
-      { error: 'Internal Server Error', message: err?.message ?? 'Unknown error' },
+      { error: 'Internal Server Error', message: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
     );
   }

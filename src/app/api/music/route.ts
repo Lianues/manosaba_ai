@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 
+// 配置为静态导出
+export const dynamic = "force-static";
+
 const VALID_EXT = /\.(mp3|wav|ogg|m4a)$/i;
 
 export async function GET() {

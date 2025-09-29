@@ -212,8 +212,10 @@ export default function OverlayScrollbar() {
           data-thumb="true"
           role="scrollbar"
           aria-orientation="vertical"
+          aria-controls="main-content"
           aria-valuemin={0}
           aria-valuemax={100}
+          aria-valuenow={Math.round((thumbTop / Math.max(trackH - thumbH, 1)) * 100)}
           aria-label="自定义滚动条拇指"
           onMouseDown={onThumbMouseDown}
           className="absolute left-0 right-0 rounded-full bg-black/50 hover:bg-black/70 shadow-[0_1px_6px_rgba(0,0,0,0.25)] cursor-pointer"
