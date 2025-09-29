@@ -641,7 +641,7 @@ export default function Home() {
 
   // CG 背景列表与切换状态（高质感切换 + 会话缓存 + 记忆当前索引）
   const cgList = useMemo(
-    () => ["/cg/Still_001_001.png", "/cg/Still_002_001.png", "/cg/Still_110_001.png", "/cg/Still_360_001.png", "/cg/Still_400_001.png"],
+    () => ["/cg/Still_001_001.png", "/cg/Still_002_001.png", "/cg/Still_110_001.png", "/cg/Still_360_001.png", "/cg/Still_400_003.png"],
     []
   );
 
